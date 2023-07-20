@@ -8,6 +8,9 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 var neteaseCloudMusicAPIHost = flag.String("ncmapi", "http://localhost:3000", "NeteaseCloudMusicAPI Host")
@@ -20,7 +23,16 @@ func main() {
 		title := query.Get("title")
 		artist := query.Get("artist")
 		album := query.Get("album")
-		log.Println("request search", "title:", title, "artist:", artist, "album:", album)
+		path := query.Get("path")
+		log.Println("request lyric", "title:", title, "artist:", artist, "album:", album, "path:", path)
+		if path != "" {
+			if localLyric := readLocalLyric(path); localLyric != nil {
+				log.Println("local lyric found", "path:", path)
+				w.Write(localLyric)
+				return
+			}
+			log.Println("local lyric not found", "path:", path)
+		}
 		fmt.Fprintf(w, "%s - %s - %s", title, artist, album)
 		keywords := fmt.Sprintf("%s %s %s", title, artist, album)
 		sr, err := nc.Search(keywords)
@@ -43,6 +55,27 @@ func main() {
 		}
 	})
 	http.ListenAndServe(":8092", nil)
+}
+
+func readLocalLyric(musicPath string) []byte {
+	bashMusicPath := strings.TrimSuffix(musicPath, filepath.Ext(musicPath))
+	lrcPath := bashMusicPath + ".lrc"
+	_, err := os.Stat(lrcPath)
+	if err == nil {
+		file, err := os.ReadFile(lrcPath)
+		if err == nil {
+			return file
+		}
+	}
+	txtLyricPath := bashMusicPath + ".txt"
+	_, err = os.Stat(txtLyricPath)
+	if err == nil {
+		file, err := os.ReadFile(txtLyricPath)
+		if err == nil {
+			return file
+		}
+	}
+	return nil
 }
 
 type NeteaseCloudMusicAPIClient struct {

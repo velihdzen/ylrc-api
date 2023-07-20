@@ -10,3 +10,5 @@ services:
     restart: unless-stopped
     ports:
       - "0.0.0.0:8092:8092"
+    volumes:
+      - "/mnt/blockstorage/music:/music:ro"
